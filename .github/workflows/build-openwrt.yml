@@ -1,9 +1,8 @@
-# 这是为 HiWiFi C526A (极路由X) 16MB NOR 闪存定制的编译脚本
+# HiWiFi C526A 定制编译脚本 (修正：openwrt-18.06.9)
 name: Build C526A iPhone Tether Firmware
 
 on:
-  push:
-  workflow_dispatch: # 允许手动触发
+  workflow_dispatch: # 必须保留手动触发，禁止push自动触发
 
 jobs:
   build:
@@ -12,13 +11,12 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
         with:
-          # 使用官方 OpenWrt 源码仓库
           repository: openwrt/openwrt
-          # 锁定在 18.06.9 分支，这是 C526A 最后一个完美适配的官方版本
+          # 🌟 修正：这里是 18.06.9 (点0)，不是 18.86.9
           ref: openwrt-18.06.9
           fetch-depth: 0
 
-      - name: Install Build Dependencies
+      - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libncurses5-dev libncursesw5-dev zlib1g-dev gawk gettext git wget libssl-dev xsltproc
@@ -30,17 +28,16 @@ jobs:
 
       - name: Generate Custom Config
         run: |
-          # 清空之前的配置
           rm -f .config
-          # 基础配置：架构 ipq40xx
+          # 基础架构
           echo "CONFIG_TARGET_ipq40xx=y" >> .config
           echo "CONFIG_TARGET_ipq40xx_generic=y" >> .config
-          # 核心：指定设备为 HiWiFi C526A (注意下划线 _)
+          # 核心设备：极路由X C526A (注意下划线)
           echo "CONFIG_TARGET_ipq40xx_generic_DEVICE_hiwifi_c526a=y" >> .config
           # 固件格式
           echo "CONFIG_TARGET_ROOTFS_SQUASHFS=y" >> .config
           echo "CONFIG_TARGET_ROOTFS_SQUASHFS4_XZ=y" >> .config
-          # 预集成 iPhone USB 共享驱动 (核心！)
+          # 预集成 iPhone USB 共享驱动
           echo "CONFIG_PACKAGE_kmod-usb-net-ipheth=y" >> .config
           echo "CONFIG_PACKAGE_usbmuxd=y" >> .config
           echo "CONFIG_PACKAGE_libusbmuxd=y" >> .config
@@ -49,17 +46,14 @@ jobs:
           echo "CONFIG_PACKAGE_luci=y" >> .config
           echo "CONFIG_PACKAGE_luci-theme-bootstrap=y" >> .config
           
-          # 强制生成默认配置
           make defconfig
 
       - name: Build Firmware
         run: |
-          # 使用多线程编译
           make -j$(nproc)
 
       - name: Upload Firmware
         uses: actions/upload-artifact@v4
         with:
-          name: OpenWrt-C526A-iPhone-Tether
-          # 指定上传产物路径：编译完成后在这里找
+          name: OpenWrt-C526A-iPhone-Tether-Final
           path: bin/targets/ipq40xx/generic/
